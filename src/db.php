@@ -46,10 +46,6 @@ function ensureSchema(PDO $pdo): void {
         );"
     );
 
-    // Fix existing duplicate usernames (if any) by merging them:
-    // - keep the smallest id for that username
-    // - move all events from the duplicates to the kept id
-    // - delete the duplicate user rows
     $pdo->exec(
         "WITH d AS (
             SELECT username, MIN(id) AS keep_id, ARRAY_AGG(id) AS ids
@@ -74,7 +70,6 @@ function ensureSchema(PDO $pdo): void {
         WHERE u.username = d.username AND u.id <> d.keep_id;"
     );
 
-    // Enforce uniqueness going forward (for tables that existed before UNIQUE was added).
     $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS calendar_users_username_uq ON calendar_users(username);");
 
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_calendar_events_user_day_start ON calendar_events(user_id, day, start_min);");
