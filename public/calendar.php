@@ -261,7 +261,7 @@ $gridStart = $firstOfMonth->modify('monday this week');
     }
 
     .table-card{ padding: 12px 14px; }
-    table{ width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; border-radius: 14px; }
+    table{ width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; border-radius: 14px; table-layout: fixed; }
     th, td{
       border-right: 1px solid rgba(255,255,255,.12);
       border-bottom: 1px solid rgba(255,255,255,.12);
@@ -281,6 +281,7 @@ $gridStart = $firstOfMonth->modify('monday this week');
       height: 140px;
       vertical-align: top;
       padding: 10px;
+      overflow: hidden; /* prevent content from stretching the grid */
     }
     .month-cell .date{
       display:flex;
@@ -289,6 +290,11 @@ $gridStart = $firstOfMonth->modify('monday this week');
       margin-bottom: 6px;
       font-weight: 800;
       color: rgba(255,255,255,.92);
+    }
+    .month-cell .events{
+      max-height: calc(140px - 28px); /* cell height minus date header area */
+      overflow: auto;                 /* many events scroll inside the cell */
+      padding-right: 2px;             /* room for scrollbar */
     }
     .month-cell.outside .date{ color: rgba(255,255,255,.45); }
     .month-cell.outside{ background: rgba(255,255,255,.02); }
@@ -306,10 +312,19 @@ $gridStart = $firstOfMonth->modify('monday this week');
       border: 1px solid rgba(255,255,255,.20);
       box-shadow: 0 8px 18px rgba(0,0,0,.18);
       text-decoration: none;
+      overflow: hidden; /* clamp long text inside event */
     }
     .event small{ color: rgba(11,18,32,.75); }
     .event .actions{ float:right; display:flex; gap:10px; }
     .event .actions a{ color: rgba(11,18,32,.85); text-decoration: none; font-weight: 900; }
+    .event .body{
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3; /* max lines shown per event */
+      overflow: hidden;
+      word-break: break-word;
+      padding-right: 4px; /* keep text away from actions */
+    }
     .event .desc{ display:block; margin-top: 2px; color: rgba(11,18,32,.78); }
     .muted{ color: rgba(255,255,255,.65); }
   </style>
@@ -427,33 +442,37 @@ $gridStart = $firstOfMonth->modify('monday this week');
                 <span><?= (int)$date->format('j') ?></span>
                 <small class="muted"><?= h($date->format('D')) ?></small>
               </div>
-              <?php foreach (($eventsByDate[$dateKey] ?? []) as $ev): ?>
-                <?php
-                  $s = (int)$ev['start_min'];
-                  $e = (int)$ev['end_min'];
-                  $t1 = minutesToTime($s);
-                  $t2 = minutesToTime($e);
-                  $bg = (string)$ev['color'];
-                  $id = (int)$ev['id'];
-                  $desc = trim((string)($ev['description'] ?? ''));
-                  $catId = isset($ev['category_id']) ? (int)$ev['category_id'] : 0;
-                  $catName = ($catId > 0 && isset($categoriesById[$catId])) ? (string)$categoriesById[$catId]['name'] : '';
-                ?>
-                <span class="event" style="background:<?= h($bg) ?>;" title="<?= h($desc) ?>">
-                  <span class="actions">
-                    <a href="./calendar.php?edit=<?= $id ?>&year=<?= $year ?>&month=<?= $month ?>" title="Edit">✎</a>
-                    <a href="./calendar.php?delete=<?= $id ?>&year=<?= $year ?>&month=<?= $month ?>" title="Delete" onclick="return confirm('Delete this event?')">x</a>
+              <div class="events">
+                <?php foreach (($eventsByDate[$dateKey] ?? []) as $ev): ?>
+                  <?php
+                    $s = (int)$ev['start_min'];
+                    $e = (int)$ev['end_min'];
+                    $t1 = minutesToTime($s);
+                    $t2 = minutesToTime($e);
+                    $bg = (string)$ev['color'];
+                    $id = (int)$ev['id'];
+                    $desc = trim((string)($ev['description'] ?? ''));
+                    $catId = isset($ev['category_id']) ? (int)$ev['category_id'] : 0;
+                    $catName = ($catId > 0 && isset($categoriesById[$catId])) ? (string)$categoriesById[$catId]['name'] : '';
+                  ?>
+                  <span class="event" style="background:<?= h($bg) ?>;" title="<?= h($desc) ?>">
+                    <span class="actions">
+                      <a href="./calendar.php?edit=<?= $id ?>&year=<?= $year ?>&month=<?= $month ?>" title="Edit">✎</a>
+                      <a href="./calendar.php?delete=<?= $id ?>&year=<?= $year ?>&month=<?= $month ?>" title="Delete" onclick="return confirm('Delete this event?')">x</a>
+                    </span>
+                    <span class="body">
+                      <?= h((string)$ev['title']) ?>
+                      <small>(<?= h($t1) ?>-<?= h($t2) ?>)</small>
+                      <?php if ($catName !== ''): ?>
+                        <small class="desc">#<?= h($catName) ?></small>
+                      <?php endif; ?>
+                      <?php if ($desc !== ''): ?>
+                        <small class="desc"><?= h($desc) ?></small>
+                      <?php endif; ?>
+                    </span>
                   </span>
-                  <?= h((string)$ev['title']) ?>
-                  <small>(<?= h($t1) ?>-<?= h($t2) ?>)</small>
-                  <?php if ($catName !== ''): ?>
-                    <small class="desc">#<?= h($catName) ?></small>
-                  <?php endif; ?>
-                  <?php if ($desc !== ''): ?>
-                    <small class="desc"><?= h($desc) ?></small>
-                  <?php endif; ?>
-                </span>
-              <?php endforeach; ?>
+                <?php endforeach; ?>
+              </div>
             </td>
           <?php endfor; ?>
         </tr>
