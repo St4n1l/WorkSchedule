@@ -119,8 +119,6 @@ function ensureSchema(PDO $pdo): void {
 
     $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS calendar_users_username_uq ON calendar_users(username);");
 
-    // Back-compat: if an 'admin' user already exists, mark it as admin.
-    // (We no longer infer admin purely from username in PHP.)
     $pdo->exec("UPDATE calendar_users SET is_admin = TRUE WHERE LOWER(username) = 'admin';");
 
     $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS calendar_categories_global_name_uq ON calendar_categories(LOWER(name)) WHERE user_id IS NULL;");
