@@ -22,6 +22,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             } else {
                 loginUser((int)$user['id']);
                 $_SESSION['username'] = (string)$user['username'];
+
+                $stmt = $pdo->prepare('SELECT is_admin FROM calendar_users WHERE id = :id LIMIT 1');
+                $stmt->execute([':id' => (int)$user['id']]);
+                $_SESSION['is_admin'] = (bool)($stmt->fetchColumn() ?: false);
+
                 header('Location: ./calendar.php', true, 302);
                 exit;
             }

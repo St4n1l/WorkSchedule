@@ -34,6 +34,8 @@ function ensureSchema(PDO $pdo): void {
         );"
     );
 
+    $pdo->exec("ALTER TABLE calendar_users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;");
+
     $pdo->exec(
         "CREATE TABLE IF NOT EXISTS calendar_categories (
             id BIGSERIAL PRIMARY KEY,
@@ -58,18 +60,14 @@ function ensureSchema(PDO $pdo): void {
         );"
     );
 
-    // If the table existed before we added description, migrate in-place.
     $pdo->exec("ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';");
     $pdo->exec("ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS event_date DATE;");
     $pdo->exec("ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS category_id BIGINT;");
 
-    // Categories were originally per-user; make them global (admin-managed) by allowing user_id to be NULL.
     $pdo->exec("ALTER TABLE calendar_categories ALTER COLUMN user_id DROP NOT NULL;");
 
-    // Legacy schema had day NOT NULL; date-based events no longer require it.
     $pdo->exec("ALTER TABLE calendar_events ALTER COLUMN day DROP NOT NULL;");
 
-    // Add FK (if missing) and ensure category deletion won't delete events.
     $pdo->exec(
         "DO $$
         BEGIN
@@ -87,15 +85,12 @@ function ensureSchema(PDO $pdo): void {
         END $$;"
     );
 
-    // Migrate legacy weekly-template rows to dated events in the current week (so they continue to show).
-    // Existing rows that already have event_date are left untouched.
     $pdo->exec(
         "UPDATE calendar_events
          SET event_date = (date_trunc('week', CURRENT_DATE)::date + COALESCE(day, 0))
          WHERE event_date IS NULL;"
     );
 
-    // Now that we've ensured every row has a date, enforce NOT NULL (safe to run repeatedly).
     $pdo->exec("ALTER TABLE calendar_events ALTER COLUMN event_date SET NOT NULL;");
 
     $pdo->exec(
@@ -124,9 +119,11 @@ function ensureSchema(PDO $pdo): void {
 
     $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS calendar_users_username_uq ON calendar_users(username);");
 
-    // Global categories are those with user_id IS NULL.
+    // Back-compat: if an 'admin' user already exists, mark it as admin.
+    // (We no longer infer admin purely from username in PHP.)
+    $pdo->exec("UPDATE calendar_users SET is_admin = TRUE WHERE LOWER(username) = 'admin';");
+
     $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS calendar_categories_global_name_uq ON calendar_categories(LOWER(name)) WHERE user_id IS NULL;");
-    // Also add a simple (name) unique index for reliable UPSERT targeting.
     $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS calendar_categories_global_name_uq_name ON calendar_categories(name) WHERE user_id IS NULL;");
 
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_calendar_events_user_date_start ON calendar_events(user_id, event_date, start_min);");

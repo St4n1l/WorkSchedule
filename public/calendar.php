@@ -6,7 +6,7 @@ require_once __DIR__ . '/../src/auth.php';
 ensureSessionStarted();
 $userId = currentUserId();
 $username = currentUsername();
-$isAdmin = strtolower((string)$username) === 'admin';
+$isAdmin = currentIsAdmin();
 
 if (!$userId) {
     header('Location: ./login.php', true, 302);

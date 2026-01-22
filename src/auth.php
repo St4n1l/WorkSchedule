@@ -25,6 +25,16 @@ function currentUsername(): ?string
     return $u !== '' ? $u : null;
 }
 
+function currentIsAdmin(): bool
+{
+    ensureSessionStarted();
+    $v = $_SESSION['is_admin'] ?? false;
+    if (is_bool($v)) return $v;
+    if (is_int($v)) return $v === 1;
+    if (is_string($v)) return $v === '1' || strtolower($v) === 'true';
+    return false;
+}
+
 function requireLoginJson(): int
 {
     $uid = currentUserId();

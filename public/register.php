@@ -14,6 +14,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     if ($username === '' || strlen($username) < 3) {
         $error = 'Username must be at least 3 characters.';
+    } elseif (strtolower($username) === 'admin') {
+        $error = 'That username is reserved.';
     } elseif ($password === '' || strlen($password) < 4) {
         $error = 'Password must be at least 4 characters.';
     } else {
@@ -32,6 +34,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 }
                 loginUser($id);
                 $_SESSION['username'] = $username;
+                $_SESSION['is_admin'] = false;
                 header('Location: ./calendar.php', true, 302);
                 exit;
             }
